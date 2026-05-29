@@ -82,7 +82,9 @@ Stack, workflow, time de agentes e pasta do projeto são montados automaticament
 - `POST /agents/create` — agente customizado
 - ~~`POST /tasks/create-system`~~ — **descontinuado (410)** — use `/dream-teams` + `/run` ou `/work-your-magic`
 
-Docs: http://localhost:8000/docs
+Docs interativos: http://localhost:8000/docs
+
+**Guia completo de uso (endpoints, fluxos, exemplos):** [docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md)
 
 ## Estrutura de agentes e recursos compartilhados
 
