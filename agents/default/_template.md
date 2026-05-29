@@ -14,9 +14,11 @@
 
 ## SKILLS
 - code-standards
+- bmad-spec-driven
 
 ## PLUGINS
 - path_guard
+- scaffold_validator
 
 ## CONSTRAINTS
 - Use paths relativos dentro do projeto
@@ -42,6 +44,7 @@ Gere arquivos com paths relativos dentro do projeto (ex: src/..., docs/...).
 | Pasta | Uso | Referência no agente |
 |-------|-----|----------------------|
 | `agents/skills/` | Conhecimento e padrões | `## SKILLS` (lista de stems) |
+| `agents/skills/bmad-*.md` | Práticas BMAD v6 adaptadas | Ver [`agents/bmad-mapping.md`](../bmad-mapping.md) |
 | `agents/plugins/` | Validadores executáveis (Python) | `## PLUGINS` (lista de nomes) |
 | `agents/instructions/` | Regras globais | Automático — aplicado a todos os agentes |
 

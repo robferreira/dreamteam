@@ -6,7 +6,7 @@ from uuid import UUID
 from src.api.schemas.project import ProjectMetadataSchema
 from src.api.schemas.tasks import ModelOverrideSchema, WorkflowType
 from src.memory.postgres import get_dream_team_repository, get_project_repository
-from src.projects.service import get_project_service
+from src.projects.service import get_project_service, slug_follows_sigla_pattern
 from src.schemas.models import ModelSelection, ModelSource
 from src.tasks.service import get_task_service
 from src.workflows.loader import load_workflow
@@ -163,7 +163,7 @@ class DreamTeamService:
 
         existing = None
         project_row = await self._project_repo.get_by_sigla(sigla)
-        if project_row:
+        if project_row and slug_follows_sigla_pattern(project_row.slug, sigla):
             existing = await self._repo.get_by_project(project_row.id)
         if existing and existing.status == "ready":
             team_id = existing.id

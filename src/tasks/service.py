@@ -206,6 +206,16 @@ class TaskService:
             ],
             "force_stop": False,
             "force_economy": False,
+            "provision_result": [],
+            "failure_context": {},
+            "recovery_result": {},
+            "recovery_history": [],
+            "recovery_attempts": 0,
+            "recovery_override": None,
+            "pending_retry_provision": False,
+            "pending_provision_target": "",
+            "pending_retry_qa": False,
+            "fix_instructions": "",
         }
 
         asyncio.create_task(self._run_graph(task.id, initial_state, thread_id))
@@ -298,6 +308,11 @@ class TaskService:
             "demand": task.demand,
             "status": status,
             "result": task.result,
+            "qa_result": result.get("qa_result"),
+            "provision_result": result.get("provision_result"),
+            "failure_context": result.get("failure_context"),
+            "recovery_result": result.get("recovery_result"),
+            "recovery_attempts": result.get("recovery_attempts", 0),
             "error": task.error,
             "thread_id": task.thread_id,
             "dream_team_id": str(task.dream_team_uuid) if task.dream_team_uuid else None,
@@ -315,8 +330,20 @@ class TaskService:
             config = {"configurable": {"thread_id": thread_id}}
             result = await graph.ainvoke(initial_state, config)
             final = result.get("final_result", result)
-            status = "completed" if final.get("approved") or result.get("memory_result") else "completed_with_issues"
-            await self._repo.update_task(task_id, status=status, result=final, clear_current_agent=True)
+            graph_error = result.get("error") or final.get("error")
+            if graph_error:
+                status = "failed"
+            elif final.get("approved") or result.get("memory_result"):
+                status = "completed"
+            else:
+                status = "completed_with_issues"
+            await self._repo.update_task(
+                task_id,
+                status=status,
+                result=final,
+                error=graph_error,
+                clear_current_agent=True,
+            )
             await self._redis.publish_event(
                 f"task:{task_id}",
                 {"type": "completed", "task_id": str(task_id), "status": status},
@@ -343,8 +370,20 @@ class TaskService:
             config = {"configurable": {"thread_id": thread_id}}
             result = await graph.ainvoke(None, config)
             final = result.get("final_result", result)
-            status = "completed" if final.get("approved") or result.get("memory_result") else "completed_with_issues"
-            await self._repo.update_task(task_id, status=status, result=final, clear_current_agent=True)
+            graph_error = result.get("error") or final.get("error")
+            if graph_error:
+                status = "failed"
+            elif final.get("approved") or result.get("memory_result"):
+                status = "completed"
+            else:
+                status = "completed_with_issues"
+            await self._repo.update_task(
+                task_id,
+                status=status,
+                result=final,
+                error=graph_error,
+                clear_current_agent=True,
+            )
         except Exception as e:
             await self._repo.update_task(
                 task_id,

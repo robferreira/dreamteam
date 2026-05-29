@@ -8,6 +8,9 @@ from src.graph.nodes.agents import (
     memory_node,
     monitoring_node,
     orchestrator_node,
+    provision_retry_node,
+    qa_node,
+    recovery_node,
     specialists_parallel_node,
 )
 from src.graph.state import AgentState
@@ -22,6 +25,7 @@ AGENT_NODES = [
     "devops",
     "security",
     "documentation",
+    "qa",
     "reviewer",
 ]
 
@@ -29,6 +33,7 @@ OUTPUT_KEYS = {
     "requirements": "specification",
     "architect": "architecture",
     "planner": "task_plan",
+    "qa": "qa_result",
     "reviewer": "review_result",
 }
 
@@ -49,10 +54,15 @@ def build_graph() -> StateGraph:
     graph.add_node("memory", memory_node)
     graph.add_node("finalize", finalize_node)
     graph.add_node("specialists_parallel", specialists_parallel_node)
+    graph.add_node("recovery", recovery_node)
+    graph.add_node("provision_retry", provision_retry_node)
 
     for agent in AGENT_NODES:
         output_key = OUTPUT_KEYS.get(agent, "artifacts")
-        graph.add_node(agent, make_agent_node(agent, output_key))
+        if agent == "qa":
+            graph.add_node(agent, qa_node)
+        else:
+            graph.add_node(agent, make_agent_node(agent, output_key))
 
     graph.set_entry_point("orchestrator")
 
@@ -62,6 +72,8 @@ def build_graph() -> StateGraph:
     route_map["memory"] = "memory"
     route_map["finalize"] = "finalize"
     route_map["specialists_parallel"] = "specialists_parallel"
+    route_map["recovery"] = "recovery"
+    route_map["provision_retry"] = "provision_retry"
 
     graph.add_conditional_edges("orchestrator", _route_from_orchestrator, route_map)
 
@@ -69,6 +81,8 @@ def build_graph() -> StateGraph:
         graph.add_edge(agent, "orchestrator")
 
     graph.add_edge("specialists_parallel", "orchestrator")
+    graph.add_edge("recovery", "orchestrator")
+    graph.add_edge("provision_retry", "orchestrator")
     graph.add_edge("monitoring", "orchestrator")
     graph.add_edge("cost_optimizer", "orchestrator")
     graph.add_edge("memory", "orchestrator")

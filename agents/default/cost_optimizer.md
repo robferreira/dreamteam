@@ -18,7 +18,8 @@
 
 ## CONSTRAINTS
 - Recomendar modelos economy para agentes não críticos
-- Não comprometer qualidade de reviewer e security
+- Não comprometer qualidade de reviewer, security e architect (gate BMAD)
+- Ser assertivo: justificar cada downgrade
 
 ## ACCEPTANCE_CRITERIA
 - recommendations com agent, provider e model sugeridos

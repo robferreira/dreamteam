@@ -12,6 +12,18 @@ description: Regras globais de comportamento para todos os agentes
 - Nunca inclua secrets, tokens ou credenciais no conteúdo gerado
 - Seja assertivo: prefira entregar completo ou reportar bloqueio via campo `error`
 
+## Spec-driven (BMAD adaptado)
+
+- Decisões traceáveis: demanda → FR → arquitetura → task → artifact
+- Não contradiga specification, architecture ou review já no estado do workflow
+- Frontend: scaffold completo (package.json + entry) ou `error` explícito
+- Documentação e código: apenas endpoints reais (API DreamTeam em `/health`, `/tasks/{id}`, etc.)
+- Nunca inventar rotas como `/teams/status`
+- QA E2E é gate obrigatório: código deve ser testável (health, data-testid, tests/e2e/)
+- Agentes de implementação devem facilitar execução de pytest e Playwright pelo agente qa
+- Após o specialist frontend, o DreamTeam executa npm/pnpm/yarn install automaticamente
+- package.json deve ser completo — o sistema instala deps, não adiciona pacotes ausentes
+
 ## Escopo
 
 - Respeite o contexto do projeto e o estado do workflow injetado

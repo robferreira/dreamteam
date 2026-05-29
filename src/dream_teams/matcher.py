@@ -1,3 +1,5 @@
+"""Team matching for dream teams."""
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,7 +24,10 @@ AGENT_KEYWORDS: dict[str, list[str]] = {
     "devops": ["devops", "docker", "kubernetes", "ci/cd", "deploy", "pipeline"],
     "security": ["seguranca", "security", "auth", "jwt", "oauth", "criptografia"],
     "documentation": ["documentacao", "documentation", "docs", "readme"],
+    "qa": ["teste", "testes", "qa", "e2e", "playwright", "pytest", "qualidade"],
 }
+
+QA_ALWAYS_WORKFLOWS = {"new-feature", "bugfix"}
 
 
 @dataclass
@@ -54,9 +59,13 @@ class TeamMatcher:
                 matched_specialists.append(agent)
 
         if not matched_specialists:
-            matched_specialists = specialists
+            matched_specialists = [s for s in specialists if s != "documentation"]
 
         agents = list(dict.fromkeys(required + matched_specialists))
+
+        if workflow_name in QA_ALWAYS_WORKFLOWS and "qa" in required and "qa" not in agents:
+            agents.insert(agents.index("reviewer") if "reviewer" in agents else len(agents), "qa")
+
         return agents
 
     def match(

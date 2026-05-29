@@ -16,11 +16,14 @@ AgentName = Literal[
     "devops",
     "security",
     "documentation",
+    "qa",
+    "recovery",
     "reviewer",
     "memory",
     "monitoring",
     "cost_optimizer",
     "specialists_parallel",
+    "provision_retry",
     "FINISH",
 ]
 
@@ -37,6 +40,17 @@ class AgentState(TypedDict, total=False):
     task_plan: dict[str, Any]
     artifacts: dict[str, Any]
     review_result: dict[str, Any]
+    qa_result: dict[str, Any]
+    provision_result: list[dict[str, Any]]
+    failure_context: dict[str, Any]
+    recovery_result: dict[str, Any]
+    recovery_history: list[dict[str, Any]]
+    recovery_attempts: int
+    recovery_override: str | None
+    pending_retry_provision: bool
+    pending_provision_target: str
+    pending_retry_qa: bool
+    fix_instructions: str
     memory_result: dict[str, Any]
     monitoring_result: dict[str, Any]
     cost_result: dict[str, Any]

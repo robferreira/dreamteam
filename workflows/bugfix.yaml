@@ -5,6 +5,7 @@ max_revisions: 2
 required_agents:
   - requirements
   - planner
+  - qa
   - reviewer
   - memory
 specialists:
@@ -23,3 +24,7 @@ models:
     provider: openai
     model: gpt-4o
     temperature: 0.0
+  qa:
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.1

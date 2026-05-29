@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     max_agent_revisits: int = 3
     display_timezone: str = "America/Sao_Paulo"
 
+    qa_run_tests: bool = True
+    qa_auto_start_servers: bool = True
+    qa_api_timeout_seconds: int = 120
+    qa_playwright_timeout_seconds: int = 300
+
+    auto_provision: bool = True
+    provision_skip_if_installed: bool = True
+    provision_npm_timeout_seconds: int = 300
+    provision_pip_timeout_seconds: int = 180
+
+    max_recovery_attempts: int = 3
+
     @field_validator("projects_dir", mode="before")
     @classmethod
     def resolve_projects_dir(cls, v: Any) -> Path:
@@ -94,4 +106,5 @@ def load_global_settings() -> dict[str, Any]:
         "max_iterations": defaults.get("max_iterations", 20),
         "max_agent_revisits": defaults.get("max_agent_revisits", 3),
         "max_revisions": defaults.get("max_revisions", 2),
+        "max_recovery_attempts": get_settings().max_recovery_attempts,
     }

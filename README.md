@@ -77,7 +77,7 @@ Stack, workflow, time de agentes e pasta do projeto são montados automaticament
 ## Outros endpoints
 
 - `POST /tasks/continue` — retomar task (checkpointer)
-- `GET /tasks/{id}` — status, steps, `project_path`
+- `GET /tasks/{id}` — status, steps, `qa_result`, `project_path`
 - `GET /projects/{slug}` — metadata e arquivos gerados
 - `POST /agents/create` — agente customizado
 - ~~`POST /tasks/create-system`~~ — **descontinuado (410)** — use `/dream-teams` + `/run` ou `/work-your-magic`
@@ -97,7 +97,10 @@ agents/                          # AGENTS_BUNDLE_DIR
 ├── custom/                      # Agentes customizados via arquivo
 ├── skills/                      # Conhecimento — referenciado via ## SKILLS
 │   ├── code-standards.md
+│   ├── bmad-spec-driven.md      # Práticas BMAD v6 adaptadas
+│   ├── bmad-qa-e2e.md           # Testes E2E pytest + Playwright
 │   └── ...
+├── bmad-mapping.md              # Mapeamento BMAD → agentes DreamTeam
 ├── instructions/                # Regras globais — automático em todos os agentes
 │   ├── global-rules.md
 │   └── ...
@@ -119,6 +122,12 @@ AGENTS_BUNDLE_DIR=/opt/external-agent-system/bundle
 | `skills/` | Lista stems em `## SKILLS` |
 | `plugins/` | Lista nomes em `## PLUGINS` |
 | `instructions/` | Injetado automaticamente (sem seção no `.md`) |
+
+**Metodologia:** personas e práticas inspiradas no [BMAD-METHOD v6](https://github.com/bmad-code-org/BMAD-METHOD) (MIT), adaptadas ao output JSON do DreamTeam. Ver [`agents/bmad-mapping.md`](agents/bmad-mapping.md).
+
+**QA E2E:** o agente `qa` (BMAD Test Architect) gera e executa testes API (pytest) e UI (Playwright) antes do reviewer. Configure `QA_*` no `.env` — ver [docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md) §7.
+
+**Provisionamento:** após o specialist frontend, o DreamTeam instala dependências automaticamente (`AUTO_PROVISION=true`). Node.js 18+ obrigatório no host para projetos com UI.
 
 ## Estrutura do projeto gerado
 

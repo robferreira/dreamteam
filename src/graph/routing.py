@@ -1,11 +1,16 @@
 """Roteamento determinístico — LangGraph NÃO decide modelos."""
 
-from src.agents.output_schemas import has_high_severity_issues
+from src.agents.output_schemas import IMPLEMENTATION_SPECIALISTS, has_high_severity_issues
 from src.graph.state import AgentState
 from src.settings import load_global_settings
 
 SPECIALISTS = ["backend", "frontend", "database", "devops", "security", "documentation"]
+IMPLEMENTATION_SPECIALIST_LIST = sorted(IMPLEMENTATION_SPECIALISTS)
+QA_AGENT = "qa"
+RECOVERY_AGENT = "recovery"
+PROVISION_RETRY = "provision_retry"
 SUPPORT_AGENTS = ["monitoring", "cost_optimizer"]
+PARALLEL_EXCLUDED = {QA_AGENT, "documentation"}
 
 
 def _agent_in_team(state: AgentState, agent: str) -> bool:
@@ -37,19 +42,78 @@ def _should_stop(state: AgentState) -> bool:
     return False
 
 
+def _recovery_allowed(state: AgentState) -> bool:
+    if not state.get("failure_context"):
+        return False
+    settings = load_global_settings()
+    max_attempts = settings.get("max_recovery_attempts", 3)
+    return state.get("recovery_attempts", 0) < max_attempts
+
+
+def qa_required(state: AgentState) -> bool:
+    workflow = state.get("workflow_config") or {}
+    agents_pool = set(workflow.get("required_agents", [])) | set(workflow.get("specialists", []))
+    if QA_AGENT not in agents_pool:
+        return False
+    return _agent_in_team(state, QA_AGENT)
+
+
+def _needs_qa_run(state: AgentState) -> bool:
+    if not qa_required(state):
+        return False
+
+    settings = load_global_settings()
+    max_revisits = settings.get("max_agent_revisits", 3)
+    if _count_visits(state, QA_AGENT) >= max_revisits:
+        return False
+
+    if not state.get("qa_result"):
+        return True
+
+    visited = state.get("visited_agents") or []
+    qa_indices = [i for i, v in enumerate(visited) if v == QA_AGENT]
+    if not qa_indices:
+        return True
+
+    last_qa_idx = qa_indices[-1]
+    for i in range(last_qa_idx + 1, len(visited)):
+        if visited[i] in IMPLEMENTATION_SPECIALISTS:
+            return True
+    return False
+
+
 def get_specialists_for_plan(state: AgentState) -> list[str]:
     task_plan = state.get("task_plan") or {}
     tasks = task_plan.get("tasks", [])
-    needed = {t.get("agent") for t in tasks if t.get("agent") in SPECIALISTS}
+    needed = {
+        t.get("agent")
+        for t in tasks
+        if t.get("agent") in SPECIALISTS and t.get("agent") not in PARALLEL_EXCLUDED
+    }
     if not needed:
         workflow = state.get("workflow_config") or {}
-        needed = set(workflow.get("specialists", SPECIALISTS))
+        needed = {
+            s for s in workflow.get("specialists", SPECIALISTS) if s not in PARALLEL_EXCLUDED
+        }
     return sorted(needed)
 
 
 def route_next(state: AgentState) -> str:
     if _should_stop(state):
         return "FINISH"
+
+    if state.get("failure_context") and _recovery_allowed(state):
+        return RECOVERY_AGENT
+
+    override = state.get("recovery_override")
+    if override and override != "FINISH":
+        return override
+
+    if state.get("pending_retry_provision"):
+        return PROVISION_RETRY
+
+    if state.get("pending_retry_qa") and _agent_in_team(state, QA_AGENT):
+        return QA_AGENT
 
     workflow = state.get("workflow_config") or {}
     max_revisions = workflow.get("max_revisions", 2)
@@ -105,7 +169,13 @@ def route_next(state: AgentState) -> str:
     if has_plan and remaining:
         return remaining[0]
 
-    if has_artifacts or (has_plan and not remaining):
+    impl_complete = has_plan and not remaining
+    if impl_complete and _needs_qa_run(state) and (has_artifacts or done):
+        return QA_AGENT
+
+    qa_ready_for_review = not qa_required(state) or bool(state.get("qa_result"))
+
+    if (has_artifacts or impl_complete) and qa_ready_for_review:
         review_blocks = has_review and _review_blocks_progress(review)
         if not has_review or (
             review_blocks
@@ -115,7 +185,7 @@ def route_next(state: AgentState) -> str:
             if _count_visits(state, "reviewer") < max_revisits + max_revisions:
                 if has_review and review_blocks and review.get("refactor_requests"):
                     refactor_agent = review["refactor_requests"][0].get("agent")
-                    if refactor_agent and refactor_agent in SPECIALISTS:
+                    if refactor_agent and refactor_agent in IMPLEMENTATION_SPECIALISTS:
                         if _count_visits(state, refactor_agent) < max_revisits:
                             return refactor_agent
                 if _agent_in_team(state, "reviewer") and (

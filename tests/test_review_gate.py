@@ -49,3 +49,32 @@ def test_route_blocks_memory_on_high_issues():
     next_agent = route_next(state)
     assert next_agent in ("reviewer", "backend")
     assert next_agent != "memory"
+
+
+def test_route_blocks_memory_on_qa_failure():
+    state = {
+        "iteration_count": 11,
+        "workflow_config": {
+            "required_agents": ["requirements", "planner", "qa", "reviewer", "memory"],
+            "specialists": ["backend"],
+            "max_revisions": 2,
+        },
+        "workflow_type": "bugfix",
+        "specification": {"functional_requirements": []},
+        "task_plan": {"tasks": [{"agent": "backend"}]},
+        "artifacts": {"backend": {"artifacts": []}},
+        "specialists_pending": ["backend"],
+        "specialists_done": ["backend"],
+        "qa_result": {"e2e_passed": False, "execution": [{"suite": "api", "passed": False}]},
+        "review_result": {
+            "approved": False,
+            "issues": [{"severity": "high", "description": "QA E2E reprovado", "agent": "backend"}],
+            "refactor_requests": [{"agent": "backend", "reason": "E2E failed"}],
+        },
+        "revision_count": 0,
+        "visited_agents": ["qa", "reviewer"],
+        "active_agents": ["requirements", "planner", "backend", "qa", "reviewer", "memory"],
+    }
+    next_agent = route_next(state)
+    assert next_agent in ("reviewer", "backend")
+    assert next_agent != "memory"

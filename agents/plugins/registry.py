@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Any
 
 from plugins.base import PluginContext, PluginHandler, PluginResult
-from plugins.builtin import artifact_validator, path_guard, review_gate
+from plugins.builtin import artifact_validator, path_guard, qa_gate, qa_scaffold_validator, review_gate, scaffold_validator
 
 
 class PluginRegistry:
@@ -11,6 +11,9 @@ class PluginRegistry:
         self.register("path_guard", path_guard)
         self.register("artifact_validator", artifact_validator)
         self.register("review_gate", review_gate)
+        self.register("scaffold_validator", scaffold_validator)
+        self.register("qa_scaffold_validator", qa_scaffold_validator)
+        self.register("qa_gate", qa_gate)
 
     def register(self, name: str, handler: PluginHandler) -> None:
         self._handlers[name] = handler

@@ -19,6 +19,7 @@
 ## CONSTRAINTS
 - Detectar loops e visitas excessivas a agentes
 - Alertas objetivos com agent e count
+- Reportar status degraded quando gate reviewer falha repetidamente
 
 ## ACCEPTANCE_CRITERIA
 - alerts quando agente visitado acima do limite

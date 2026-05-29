@@ -2,7 +2,15 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.api.schemas.project import ProjectMetadataSchema
-from src.projects.service import ProjectService, project_folder_slug, resolve_project_slug, slugify
+from src.projects.service import (
+    ProjectService,
+    ensure_sigla_context,
+    extract_sigla,
+    project_folder_slug,
+    resolve_project_slug,
+    slug_follows_sigla_pattern,
+    slugify,
+)
 
 
 def test_slugify():
@@ -12,6 +20,48 @@ def test_slugify():
 def test_project_folder_slug():
     assert project_folder_slug("ESTQ", "Sistema de Estoque ACME") == "estq_sistema-de-estoque-acme"
     assert project_folder_slug("PAGTO", "Sistema de Pagamentos") == "pagto_sistema-de-pagamentos"
+
+
+def test_slug_follows_sigla_pattern():
+    assert slug_follows_sigla_pattern("estq_sistema-de-estoque", "ESTQ") is True
+    assert slug_follows_sigla_pattern("sistema-de-agentes-dreamteam-4", "DT") is False
+
+
+def test_extract_sigla_from_organization():
+    metadata = ProjectMetadataSchema(
+        system_name="Test System",
+        system_description="A test system for unit tests",
+        owner_name="João Teste",
+        owner_email="joao@test.com",
+        area="ti",
+        organization="DT",
+    )
+    assert extract_sigla(metadata) == "DT"
+
+
+def test_resolve_project_slug_from_organization():
+    metadata = ProjectMetadataSchema(
+        system_name="Sistema de Agentes",
+        system_description="A test system for unit tests",
+        owner_name="João Teste",
+        owner_email="joao@test.com",
+        area="ti",
+        organization="DT",
+    )
+    assert resolve_project_slug(metadata) == "dt_sistema-de-agentes"
+
+
+def test_ensure_sigla_context_copies_organization():
+    metadata = ProjectMetadataSchema(
+        system_name="Test System",
+        system_description="A test system for unit tests",
+        owner_name="João Teste",
+        owner_email="joao@test.com",
+        area="ti",
+        organization="DT",
+    )
+    updated = ensure_sigla_context(metadata)
+    assert updated.additional_context["sigla"] == "DT"
 
 
 def test_resolve_project_slug_with_sigla():

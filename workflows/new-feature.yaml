@@ -6,6 +6,7 @@ required_agents:
   - requirements
   - architect
   - planner
+  - qa
   - reviewer
   - memory
 specialists:
@@ -40,3 +41,7 @@ models:
     provider: openai
     model: gpt-4o
     temperature: 0.0
+  qa:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.1

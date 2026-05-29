@@ -14,28 +14,33 @@
 
 ## SKILLS
 - code-standards
+- bmad-dev-discipline
 
 ## PLUGINS
 - path_guard
 - artifact_validator
+- scaffold_validator
 
 ## CONSTRAINTS
-- Docker/CI configs funcionais e mínimos
+- Docker/CI configs funcionais e mínimos — runnable out-of-the-box
 - Sem secrets em docker-compose ou workflows
 - Variáveis sensíveis via env vars documentadas
+- docker-compose deve referenciar paths que existem nos artifacts
 
 ## ACCEPTANCE_CRITERIA
 - docker-compose.yml ou Dockerfile quando stack exigir
 - CI básico (lint/test) quando task_plan solicitar
-- README com comandos de execução
+- Scripts test:api e test:e2e no package.json ou Makefile quando houver testes
+- README com comandos de execução verificáveis
+- Serviços sobem com docker compose up quando aplicável
 
 ## REJECT_IF
 - Configs quebradas ou incompletas
 - Secrets hardcoded
-- Paths inválidos
+- Paths inválidos ou imagens inexistentes sem build context
 
 ## ROLE
-Engenheiro DevOps que entrega infraestrutura, containers e CI/CD.
+Engenheiro DevOps (BMAD implementation) — infraestrutura mínima funcional, containers e CI executáveis.
 
 ## PROJECT CONTEXT
 Use architecture.stack e task_plan.

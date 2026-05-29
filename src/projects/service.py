@@ -16,17 +16,45 @@ def slugify(name: str) -> str:
     return slug[:80] or "project"
 
 
+_SIGLA_RE = re.compile(r"^[A-Z0-9-]{2,16}$")
+
+
+def extract_sigla(metadata: ProjectMetadataSchema) -> str | None:
+    ctx = metadata.additional_context or {}
+    if ctx.get("sigla"):
+        return str(ctx["sigla"]).strip().upper()
+    org = (metadata.organization or "").strip()
+    if org and _SIGLA_RE.match(org.upper()):
+        return org.upper()
+    return None
+
+
+def ensure_sigla_context(metadata: ProjectMetadataSchema) -> ProjectMetadataSchema:
+    sigla = extract_sigla(metadata)
+    if not sigla:
+        return metadata
+    ctx = dict(metadata.additional_context or {})
+    if ctx.get("sigla") == sigla:
+        return metadata
+    ctx["sigla"] = sigla
+    return metadata.model_copy(update={"additional_context": ctx})
+
+
 def project_folder_slug(sigla: str, project_name: str, *, max_length: int = 128) -> str:
     sigla_part = re.sub(r"[^a-z0-9]+", "", sigla.lower()) or "proj"
     name_part = re.sub(r"[^a-z0-9]+", "-", project_name.lower()).strip("-") or "project"
     return f"{sigla_part}_{name_part}"[:max_length].rstrip("-") or "project"
 
 
+def slug_follows_sigla_pattern(slug: str, sigla: str) -> bool:
+    sigla_part = re.sub(r"[^a-z0-9]+", "", sigla.lower()) or "proj"
+    return slug.startswith(f"{sigla_part}_")
+
+
 def resolve_project_slug(metadata: ProjectMetadataSchema) -> str:
-    ctx = metadata.additional_context or {}
-    sigla = ctx.get("sigla")
+    sigla = extract_sigla(metadata)
     if sigla:
-        return project_folder_slug(str(sigla), metadata.system_name)
+        return project_folder_slug(sigla, metadata.system_name)
     return slugify(metadata.system_name)
 
 
@@ -69,6 +97,7 @@ class ProjectService:
         return slug
 
     async def create_project(self, metadata: ProjectMetadataSchema) -> dict[str, Any]:
+        metadata = ensure_sigla_context(metadata)
         meta_dict = metadata.to_metadata_dict()
         base_slug = resolve_project_slug(metadata)
         slug = await self._unique_slug(base_slug)

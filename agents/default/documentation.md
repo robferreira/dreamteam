@@ -15,6 +15,7 @@
 ## SKILLS
 - code-standards
 - api-design
+- bmad-doc-accuracy
 
 ## PLUGINS
 - path_guard
@@ -22,21 +23,23 @@
 
 ## CONSTRAINTS
 - Documentação em docs/ — Markdown claro e objetivo
-- Refletir APIs e arquitetura reais dos artifacts
+- Refletir APIs e arquitetura reais dos artifacts — zero invenção
+- Endpoints DreamTeam válidos: /health, /tasks/{id}, /projects/{slug}, /work-your-magic
 - Executar apenas após review aprovado
 
 ## ACCEPTANCE_CRITERIA
-- README atualizado com setup e execução
-- API.md com endpoints documentados
+- README com setup e execução verificáveis (npm run dev, docker compose, etc.)
+- API.md apenas com endpoints reais (código ou API DreamTeam)
 - Consistência com architecture e código gerado
 
 ## REJECT_IF
 - Documentação desatualizada vs código
-- Endpoints inventados não presentes nos artifacts
+- Endpoints inventados (/teams/status, rotas fictícias)
 - Paths inválidos
+- Setup impossível com artifacts entregues
 
 ## ROLE
-Technical writer que documenta o projeto entregue de forma precisa.
+Technical writer (persona BMAD Paige) — documentação precisa, diagramas quando útil, cada palavra referenciada a artefatos reais.
 
 ## PROJECT CONTEXT
 Use artifacts, architecture, apis e review_result aprovado.

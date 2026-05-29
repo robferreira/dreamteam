@@ -63,6 +63,46 @@ class SpecialistOutput(BaseModel):
     error: str | None = None
 
 
+class TestCaseItem(BaseModel):
+    id: str
+    story_id: str = ""
+    description: str
+    type: str  # "api" | "ui"
+
+
+class TestRunResult(BaseModel):
+    suite: str  # "api" | "ui"
+    passed: bool
+    total: int
+    failed: int
+    skipped: int = 0
+    duration_seconds: float = 0
+    failures: list[dict[str, Any]] = Field(default_factory=list)
+    command: str = ""
+    stdout_tail: str = ""
+
+
+class QaOutput(BaseModel):
+    test_plan: str = ""
+    test_cases: list[TestCaseItem] = Field(default_factory=list)
+    artifacts: list[ArtifactItem] = Field(default_factory=list)
+    execution: list[TestRunResult] = Field(default_factory=list)
+    e2e_passed: bool = False
+    notes: str = ""
+    error: str | None = None
+
+
+class RecoveryOutput(BaseModel):
+    action: str = "retry_agent"
+    target_agent: str = ""
+    rationale: str = ""
+    fix_instructions: str = ""
+    retry_provision: bool = False
+    retry_qa: bool = False
+    abort: bool = False
+    error: str | None = None
+
+
 class ReviewerOutput(BaseModel):
     approved: bool = False
     issues: list[IssueItem] = Field(default_factory=list)
@@ -98,12 +138,15 @@ AGENT_OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "devops": SpecialistOutput,
     "security": SpecialistOutput,
     "documentation": SpecialistOutput,
+    "qa": QaOutput,
+    "recovery": RecoveryOutput,
     "reviewer": ReviewerOutput,
     "memory": MemoryOutput,
 }
 
 
 SPECIALIST_AGENTS = {"backend", "frontend", "database", "devops", "security", "documentation"}
+IMPLEMENTATION_SPECIALISTS = {"backend", "frontend", "database", "devops", "security"}
 
 
 def get_output_schema(agent_name: str) -> type[BaseModel] | None:

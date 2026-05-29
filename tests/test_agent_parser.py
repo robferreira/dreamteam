@@ -98,6 +98,21 @@ def test_system_agents_have_default_model():
         assert defn.default_model.model
 
 
+def test_all_system_agents_parse_bmad_skills():
+    from src.agents.loader import get_agent_loader
+
+    loader = get_agent_loader()
+    for name in loader.list_system_agents():
+        defn = loader.load(name)
+        for skill in defn.skills:
+            assert skill.startswith("bmad-") or skill in (
+                "code-standards",
+                "api-design",
+                "reviewer-checklist",
+                "security-baseline",
+            ), f"{name} referencia skill desconhecida: {skill}"
+
+
 def test_template_not_in_system_agents():
     from src.agents.loader import get_agent_loader
 

@@ -651,7 +651,8 @@ flowchart LR
     REQ[requirements] --> ARCH[architect]
     ARCH --> PLAN[planner]
     PLAN --> SPEC[specialists]
-    SPEC --> REV[reviewer]
+    SPEC --> QA[qa]
+    QA --> REV[reviewer]
     REV -->|approved| DOC[documentation]
     REV -->|rejected| SPEC
     DOC --> MEM[memory]
@@ -662,9 +663,10 @@ flowchart LR
 2. **architect** — Stack e arquitetura (`docs/architecture.json`)
 3. **planner** — Decomposição em tasks por specialist
 4. **specialists** — backend, frontend, database, devops, security (em paralelo quando possível)
-5. **reviewer** — Gate de qualidade; issues `high` bloqueiam aprovação
-6. **documentation** — Docs finais (após review aprovado)
-7. **memory** — Indexa decisões no RAG
+5. **qa** — Gera testes E2E (pytest + Playwright), executa no projeto e produz `qa_result`
+6. **reviewer** — Gate de qualidade; falha E2E ou issues `high` bloqueiam aprovação
+7. **documentation** — Docs finais (após review aprovado)
+8. **memory** — Indexa decisões no RAG
 
 ### 5.2 Como o orquestrador escolhe o próximo agente
 
@@ -694,6 +696,7 @@ flowchart LR
 | `architecture` | architect já definiu a arquitetura |
 | `task_plan` | planner já decompôs em tasks |
 | `artifacts` | specialists já geraram código |
+| `qa_result` | qa já gerou/executou testes E2E (`e2e_passed`, `execution`) |
 | `review_result` | reviewer já avaliou |
 | `memory_result` | memory já indexou no RAG |
 | `active_agents` | Time permitido nesta execução |
@@ -714,13 +717,18 @@ A função em `src/graph/routing.py` aplica regras **em ordem fixa**:
    - Filtra por `active_agents` (time configurado)
    - **Mais de 1 pendente** → nó `specialists_parallel` (execução paralela)
    - **Só 1 pendente** → chama o specialist diretamente
-6. **reviewer** — quando há artefatos ou todos os specialists terminaram:
+6. **qa** — após todos os specialists de implementação, se `qa` está no time:
+   - Gera testes API (pytest) e UI (Playwright) no projeto
+   - Executa suites automaticamente (`QA_RUN_TESTS=true`)
+   - Preenche `qa_result.e2e_passed` e `docs/qa-report.json`
+7. **reviewer** — quando há `qa_result` (ou qa não está no time) e artefatos prontos:
    - Se reprovou com `refactor_requests` → manda de volta o specialist indicado (ex.: `backend`)
    - Issues com severidade `high` **bloqueiam** progresso até corrigir (até `max_revisions`)
-7. **documentation** — após review aprovado (se estiver no time)
-8. **memory** — indexa decisões no RAG
-9. **cost_optimizer** — opcional, após memory
-10. **FINISH** — encerra e grava manifest em `.dreamteam/manifest.json`
+   - `qa_result.e2e_passed=false` → reprovação via plugin `qa_gate`
+8. **documentation** — após review aprovado (se estiver no time)
+9. **memory** — indexa decisões no RAG
+10. **cost_optimizer** — opcional, após memory
+11. **FINISH** — encerra e grava manifest em `.dreamteam/manifest.json`
 
 Em todo passo, o roteador verifica `_agent_in_team()`: se o agente não está em `active_agents`, **nunca é chamado**, mesmo que o pipeline normalmente o exigiria.
 
@@ -831,6 +839,23 @@ Para apontar bundle externo:
 AGENTS_BUNDLE_DIR=/caminho/para/bundle-externo
 ```
 
+#### Agentes inspirados no BMAD v6
+
+Os agentes default incorporam personas e práticas do [BMAD-METHOD v6](https://github.com/bmad-code-org/BMAD-METHOD) (MIT), adaptadas ao formato JSON do DreamTeam:
+
+| DreamTeam | Persona BMAD |
+|-----------|--------------|
+| requirements | Analyst + PM |
+| architect | Architect |
+| planner | Scrum Master / story planning |
+| backend, frontend | Senior Dev + UX |
+| reviewer | Code review + QA |
+| documentation | Tech Writer |
+
+Skills BMAD em `agents/skills/bmad-*.md`. Mapeamento completo: [`agents/bmad-mapping.md`](../agents/bmad-mapping.md).
+
+Plugin `scaffold_validator` exige scaffold mínimo (ex.: frontend com `package.json` + entry point).
+
 ### 5.4 Override de modelos
 
 Prioridade de resolução do modelo (maior → menor):
@@ -882,6 +907,7 @@ projects/{slug}/
 
 | Campo | Descrição |
 |-------|-----------|
+| `qa_result` | qa já executou testes E2E (`e2e_passed`, `execution`, failures) |
 | `approved` | Se o reviewer aprovou |
 | `artifacts` | Output JSON de cada specialist |
 | `review_result` | Issues e refactor_requests |
@@ -906,6 +932,21 @@ projects/{slug}/
 | `MAX_AGENT_REVISITS` | 3 | Máximo de revisitas por agente |
 | `REQUEST_TIMEOUT_SECONDS` | 120 | Timeout de requisições LLM |
 | `DISPLAY_TIMEZONE` | `America/Sao_Paulo` | Fuso IANA para `estimated_completion_at` e timestamps na API |
+| `QA_RUN_TESTS` | `true` | Executa pytest/Playwright após agente qa gerar testes |
+| `QA_AUTO_START_SERVERS` | `true` | Sobe API e frontend efêmeros para E2E |
+| `QA_API_TIMEOUT_SECONDS` | 120 | Timeout da suite pytest |
+| `QA_PLAYWRIGHT_TIMEOUT_SECONDS` | 300 | Timeout da suite Playwright |
+| `AUTO_PROVISION` | `true` | Instala deps após frontend/backend |
+| `PROVISION_SKIP_IF_INSTALLED` | `true` | Pula install se node_modules/deps já atualizados |
+| `PROVISION_NPM_TIMEOUT_SECONDS` | 300 | Timeout do npm/pnpm/yarn install |
+| `PROVISION_PIP_TIMEOUT_SECONDS` | 180 | Timeout do pip install |
+| `MAX_RECOVERY_ATTEMPTS` | 3 | Tentativas do orquestrador de recuperação antes de marcar task como `failed` |
+
+**Provisionamento automático:** após o specialist `frontend` (e `backend`), o DreamTeam detecta stack e executa install (`npm ci`/`npm install`, `pip install`, Playwright browsers). Requer **Node.js 18+** no host. Em falha de install, a task **não encerra imediatamente** — o agente `recovery` analisa e pode reencaminhar correções (ex.: fix no `package.json`, retry de provision). Ver `provision_result` e `failure_context` em `GET /tasks/{id}`.
+
+**Recuperação automática:** falhas de provisionamento, QA E2E ou review (após esgotar revisões) disparam o agente `recovery`. Enquanto houver tentativas (`MAX_RECOVERY_ATTEMPTS`), a task permanece `running` com `current_agent: recovery`. Campos expostos: `failure_context`, `recovery_result`, `recovery_attempts`, `recovery_history` (no `result` final).
+
+**QA E2E:** requer Node.js/npm no host para Playwright quando o projeto tem frontend. O agente `qa` grava `docs/qa-report.json` e expõe `qa_result` em `GET /tasks/{id}`.
 
 Horários como `estimated_completion_at` são retornados no fuso configurado (ex.: `2026-05-29T13:10:19-03:00`), não em UTC.
 

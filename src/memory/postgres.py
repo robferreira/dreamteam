@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.memory.db_models import (
@@ -256,7 +256,12 @@ class ProjectRepository:
         async with get_session() as session:
             result = await session.execute(
                 select(Project)
-                .where(Project.metadata_["sigla"].astext == sigla)
+                .where(
+                    or_(
+                        Project.metadata_["sigla"].astext == sigla,
+                        Project.organization == sigla,
+                    )
+                )
                 .order_by(Project.created_at.desc())
             )
             return result.scalars().first()

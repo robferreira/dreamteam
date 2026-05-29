@@ -102,6 +102,7 @@ async def run_agent(
     force_economy: bool = False,
     extra_context: str = "",
     project_path: str = "",
+    plugin_extra: dict[str, Any] | None = None,
 ) -> AgentRunResult:
     """Executa agente obrigatoriamente via ModelRouter."""
     start = time.perf_counter()
@@ -207,6 +208,7 @@ async def run_agent(
         agent_name=agent_name,
         output=output,
         project_path=project_path,
+        extra=plugin_extra or {},
     )
     if plugin_errors:
         output.setdefault("plugin_warnings", []).extend(plugin_errors)
