@@ -84,7 +84,7 @@ Stack, workflow, time de agentes e pasta do projeto são montados automaticament
 
 Docs interativos: http://localhost:8000/docs
 
-**Guia completo de uso (endpoints, fluxos, exemplos):** [docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md)
+**Guia completo de uso (endpoints, fluxos, exemplos):** [docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md) — inclui roteamento do orquestrador (§5.2)
 
 ## Estrutura de agentes e recursos compartilhados
 

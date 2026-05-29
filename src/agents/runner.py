@@ -132,6 +132,15 @@ async def run_agent(
     router = get_model_router()
     selection = router.resolve(ctx, force_economy=force_economy)
 
+    if task_id:
+        from src.cache.redis_client import get_redis_cache
+        from src.settings import get_settings
+
+        repo = get_task_repository()
+        await repo.update_task(task_id, current_agent=agent_name)
+        ttl = get_settings().request_timeout_seconds + 30
+        await get_redis_cache().set_task_heartbeat(str(task_id), ttl=ttl)
+
     registry = get_provider_registry()
     llm = registry.create(selection)
 

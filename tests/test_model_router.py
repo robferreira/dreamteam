@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 
 from src.model_router.router import ModelRouter
 from src.model_router.validator import ModelValidationError
@@ -25,7 +26,10 @@ def test_priority_orchestrator_override(router):
         user_selection=ModelSelection(agent="backend", provider="openai", model="gpt-4o"),
         agent_default=DefaultModelConfig(provider="openai", model="gpt-4.1"),
     )
-    result = router.resolve(ctx)
+    with patch("src.llm.provider_availability.get_settings") as mock_settings:
+        mock_settings.return_value.anthropic_api_key = "sk-ant-test"
+        mock_settings.return_value.openai_api_key = "sk-test"
+        result = router.resolve(ctx)
     assert result.provider == "anthropic"
     assert result.source == ModelSource.ORCHESTRATOR_OVERRIDE
 
@@ -83,5 +87,8 @@ def test_override_rules_provider_blocked(router):
         agent_default=DefaultModelConfig(provider="google", model="gemini-1.5-pro"),
         override_rules=AgentOverrideRules(allow_providers=["openai"], max_cost_tier="standard"),
     )
-    with pytest.raises(ModelValidationError):
-        router.resolve(ctx)
+    with patch("src.llm.provider_availability.get_settings") as mock_settings:
+        mock_settings.return_value.google_api_key = "google-key"
+        mock_settings.return_value.openai_api_key = "sk-test"
+        with pytest.raises(ModelValidationError):
+            router.resolve(ctx)

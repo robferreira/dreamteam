@@ -65,6 +65,22 @@ class RedisCache:
         except Exception as e:
             logger.warning("redis_publish_failed", channel=channel, error=str(e))
 
+    def task_heartbeat_key(self, task_id: str) -> str:
+        return f"task:{task_id}:heartbeat"
+
+    async def set_task_heartbeat(self, task_id: str, ttl: int) -> None:
+        await self.set(self.task_heartbeat_key(task_id), "1", ttl=ttl)
+
+    async def has_task_heartbeat(self, task_id: str) -> bool:
+        return await self.get(self.task_heartbeat_key(task_id)) is not None
+
+    async def clear_task_heartbeat(self, task_id: str) -> None:
+        try:
+            client = await self.connect()
+            await client.delete(self.task_heartbeat_key(task_id))
+        except Exception:
+            pass
+
 
 @lru_cache
 def get_redis_cache() -> RedisCache:

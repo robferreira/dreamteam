@@ -16,6 +16,20 @@ def slugify(name: str) -> str:
     return slug[:80] or "project"
 
 
+def project_folder_slug(sigla: str, project_name: str, *, max_length: int = 128) -> str:
+    sigla_part = re.sub(r"[^a-z0-9]+", "", sigla.lower()) or "proj"
+    name_part = re.sub(r"[^a-z0-9]+", "-", project_name.lower()).strip("-") or "project"
+    return f"{sigla_part}_{name_part}"[:max_length].rstrip("-") or "project"
+
+
+def resolve_project_slug(metadata: ProjectMetadataSchema) -> str:
+    ctx = metadata.additional_context or {}
+    sigla = ctx.get("sigla")
+    if sigla:
+        return project_folder_slug(str(sigla), metadata.system_name)
+    return slugify(metadata.system_name)
+
+
 def _build_readme(metadata: dict[str, Any]) -> str:
     return f"""# {metadata['system_name']}
 
@@ -56,7 +70,7 @@ class ProjectService:
 
     async def create_project(self, metadata: ProjectMetadataSchema) -> dict[str, Any]:
         meta_dict = metadata.to_metadata_dict()
-        base_slug = slugify(metadata.system_name)
+        base_slug = resolve_project_slug(metadata)
         slug = await self._unique_slug(base_slug)
         root_path = f"projects/{slug}"
         project_dir = self._projects_root() / slug

@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     request_timeout_seconds: int = 120
     max_iterations: int = 20
     max_agent_revisits: int = 3
+    display_timezone: str = "America/Sao_Paulo"
 
     @field_validator("projects_dir", mode="before")
     @classmethod

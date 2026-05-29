@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from src.llm.provider_availability import apply_provider_fallback
 from src.model_router.cost_policy import CostPolicy
 from src.model_router.resolver import ModelResolver
 from src.model_router.validator import ModelValidationError, ModelValidator
@@ -24,6 +25,7 @@ class ModelRouter:
                 f"Nenhum modelo resolvido para agente '{ctx.agent_name}'"
             )
 
+        selection = apply_provider_fallback(selection)
         selection = self._cost_policy.apply_economy_override(selection, force_economy)
         self._validator.validate(selection, ctx.override_rules)
         self._cost_policy.validate_tier(selection, ctx.override_rules)

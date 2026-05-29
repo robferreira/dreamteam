@@ -17,7 +17,11 @@ SAMPLE_PROJECT = {
 
 @pytest.fixture
 def client():
-    with patch("src.memory.postgres.init_db", new=AsyncMock()):
+    with (
+        patch("src.memory.postgres.init_db", new=AsyncMock()),
+        patch("src.memory.rag.bootstrap_standards", new=AsyncMock()),
+        patch("src.tasks.reconciliation.reconcile_orphaned_tasks", new=AsyncMock(return_value=0)),
+    ):
         from src.main import app
 
         with TestClient(app) as c:

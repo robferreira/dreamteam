@@ -3,7 +3,7 @@ import re
 from pydantic import BaseModel, Field, field_validator
 
 from src.api.schemas.project import ProjectMetadataSchema
-from src.api.schemas.tasks import ModelOverrideSchema, WorkflowType
+from src.api.schemas.tasks import ModelOverrideSchema, TaskTimelineSchema, WorkflowType
 
 
 class CreateDreamTeamRequest(BaseModel):
@@ -35,6 +35,7 @@ class RunDreamTeamResponse(BaseModel):
     project_path: str
     status: str
     message: str = "Execução iniciada"
+    timeline: TaskTimelineSchema | None = None
 
 
 class WorkYourMagicRequest(BaseModel):
@@ -92,3 +93,4 @@ class WorkYourMagicResponse(BaseModel):
     agents: list[str]
     rationale: str
     status: str
+    timeline: TaskTimelineSchema | None = None

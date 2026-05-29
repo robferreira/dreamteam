@@ -11,6 +11,10 @@ Documentação prática da API DreamTeam: o que cada endpoint faz, como funciona
 3. [Fluxos de uso recomendados](#3-fluxos-de-uso-recomendados)
 4. [Referência de endpoints](#4-referência-de-endpoints)
 5. [Workflows e agentes](#5-workflows-e-agentes)
+   - [5.1 Pipeline do grafo](#51-pipeline-do-grafo-workflow-new-feature)
+   - [5.2 Como o orquestrador escolhe o próximo agente](#52-como-o-orquestrador-escolhe-o-próximo-agente)
+   - [5.3 Bundle de agentes](#53-bundle-de-agentes-agents_bundle_dir)
+   - [5.4 Override de modelos](#54-override-de-modelos)
 6. [Estados da task e acompanhamento](#6-estados-da-task-e-acompanhamento)
 7. [Variáveis de ambiente](#7-variáveis-de-ambiente)
 8. [Exemplos completos com curl](#8-exemplos-completos-com-curl)
@@ -178,8 +182,8 @@ Base URL padrão: `http://localhost:8000`
 1. `build_project_from_demand()` monta metadados do projeto a partir do pedido.
 2. `TeamMatcher` classifica o workflow por palavras-chave no pedido.
 3. Filtra specialists (backend, frontend, etc.) por keywords no texto.
-4. Se já existir DreamTeam com a mesma sigla → reutiliza.
-5. Caso contrário → `POST /dream-teams` implícito.
+4. Se já existir DreamTeam com a mesma sigla → reutiliza (busca por `metadata.sigla`, não pelo nome da pasta).
+5. Caso contrário → `POST /dream-teams` implícito; pasta criada como `{sigla}_{nome_projeto}` (slugificado, ex.: `estq_sistema-de-estoque-acme`).
 6. Executa o grafo e retorna `task_id`.
 
 **Body (JSON):**
@@ -209,13 +213,23 @@ Base URL padrão: `http://localhost:8000`
 {
   "task_id": "uuid-da-task",
   "dream_team_id": "uuid-do-time",
-  "project_slug": "sistema-de-estoque-acme-estq",
-  "project_path": "projects/sistema-de-estoque-acme-estq",
+  "project_slug": "estq_sistema-de-estoque-acme",
+  "project_path": "projects/estq_sistema-de-estoque-acme",
   "workflow": "new-feature",
   "agents": ["requirements", "architect", "planner", "backend", "reviewer", "memory"],
   "rationale": "Workflow detectado: new-feature. ...",
-  "status": "running"
+  "status": "running",
+  "timeline": {
+    "estimated_duration_minutes": 45,
+    "estimated_duration_label": "36–54 minutos",
+    "estimated_completion_at": "2026-05-29T12:38:50-03:00",
+    "display_timezone": "America/Sao_Paulo",
+    "timeline_rationale": "Workflow new-feature, 8 agentes no time, escopo elevado (frontend, docker)"
+  }
+}
 ```
+
+**Campo `timeline`:** estimativa heurística de conclusão calculada no momento do pedido (workflow, agentes e complexidade do texto). Não requer LLM extra.
 
 **Erros:**
 
@@ -234,8 +248,9 @@ Base URL padrão: `http://localhost:8000`
 **Como funciona internamente:**
 
 1. Cria registro do projeto no PostgreSQL e pasta em `projects/{slug}/`.
-2. Persiste DreamTeam com workflow, agentes e overrides de modelo.
-3. Grava `.dreamteam/team.json` no projeto.
+2. Se `project.additional_context.sigla` estiver presente, o slug da pasta segue `{sigla}_{nome}` (ex.: `pagto_sistema-de-pagamentos-acme`); caso contrário, usa apenas o nome slugificado.
+3. Persiste DreamTeam com workflow, agentes e overrides de modelo.
+4. Grava `.dreamteam/team.json` no projeto.
 
 **Body (JSON):**
 
@@ -278,8 +293,8 @@ Base URL padrão: `http://localhost:8000`
 ```json
 {
   "dream_team_id": "uuid",
-  "project_slug": "sistema-de-pagamentos-acme",
-  "project_path": "projects/sistema-de-pagamentos-acme",
+  "project_slug": "pagto_sistema-de-pagamentos-acme",
+  "project_path": "projects/pagto_sistema-de-pagamentos-acme",
   "workflow": "new-feature",
   "agents": ["requirements", "architect", "..."],
   "status": "ready"
@@ -321,10 +336,17 @@ Base URL padrão: `http://localhost:8000`
 {
   "task_id": "uuid",
   "dream_team_id": "uuid",
-  "project_slug": "sistema-de-pagamentos-acme",
-  "project_path": "projects/sistema-de-pagamentos-acme",
+  "project_slug": "pagto_sistema-de-pagamentos-acme",
+  "project_path": "projects/pagto_sistema-de-pagamentos-acme",
   "status": "running",
-  "message": "Execução iniciada"
+  "message": "Execução iniciada",
+  "timeline": {
+    "estimated_duration_minutes": 30,
+    "estimated_duration_label": "24–36 minutos",
+    "estimated_completion_at": "2026-05-29T12:23:50-03:00",
+    "display_timezone": "America/Sao_Paulo",
+    "timeline_rationale": "Workflow new-feature, 6 agentes no time, escopo padrão"
+  }
 }
 ```
 
@@ -352,9 +374,9 @@ Base URL padrão: `http://localhost:8000`
 ```json
 {
   "id": "uuid",
-  "project_id": "sistema-de-estoque-acme-estq",
-  "project_slug": "sistema-de-estoque-acme-estq",
-  "project_path": "projects/sistema-de-estoque-acme-estq",
+  "project_id": "estq_sistema-de-estoque-acme",
+  "project_slug": "estq_sistema-de-estoque-acme",
+  "project_path": "projects/estq_sistema-de-estoque-acme",
   "files_written_count": 12,
   "workflow": "new-feature",
   "demand": "## CONTEXTO DO PROJETO\n...",
@@ -369,25 +391,54 @@ Base URL padrão: `http://localhost:8000`
   "thread_id": "task-uuid",
   "created_at": "2026-05-29T12:00:00",
   "updated_at": "2026-05-29T12:05:00",
+  "timeline": {
+    "estimated_duration_minutes": 45,
+    "estimated_duration_label": "36–54 minutos",
+    "estimated_completion_at": "2026-05-29T12:45:00-03:00",
+    "timeline_rationale": "Workflow new-feature, 8 agentes no time",
+    "display_timezone": "America/Sao_Paulo"
+  },
+  "current_agent": "backend",
+  "progress": {
+    "completed_count": 3,
+    "current_agent": "backend",
+    "label": "backend em execução"
+  },
   "steps": [
     {
       "agent": "requirements",
+      "status": "completed",
       "model_provider": "openai",
       "model_name": "gpt-4o-mini",
       "model_source": "agent_default",
       "tokens_estimated": 1500,
       "latency_ms": 3200,
-      "created_at": "2026-05-29T12:01:00"
+      "created_at": "2026-05-29T09:01:00-03:00"
+    },
+    {
+      "agent": "backend",
+      "status": "running",
+      "model_provider": "",
+      "model_name": "",
+      "model_source": "",
+      "tokens_estimated": 0,
+      "latency_ms": 0,
+      "created_at": null
     }
   ]
 }
 ```
+
+**Campo `steps[].status`:** `completed` (agente já terminou), `running` (em execução agora), `failed` (erro no output do agente).
+
+**Campos `current_agent` e `progress`:** indicam qual agente está rodando e quantos steps já concluíram.
 
 **Status possíveis:**
 
 | Status | Significado |
 |--------|-------------|
 | `running` | Grafo em execução |
+| `interrupted` | Execução interrompida (restart do serviço ou worker inativo) — use `POST /tasks/continue` para retomar |
 | `completed` | Finalizou com sucesso (review aprovado ou memory concluído) |
 | `completed_with_issues` | Finalizou, mas review não aprovou totalmente |
 | `failed` | Erro durante execução — ver campo `error` |
@@ -454,14 +505,14 @@ Base URL padrão: `http://localhost:8000`
 
 **O que faz:** Retorna metadados e lista de arquivos gerados de um projeto.
 
-**Parâmetro:** `slug` — identificador do projeto (ex.: `sistema-de-estoque-acme-estq`).
+**Parâmetro:** `slug` — identificador do projeto (ex.: `estq_sistema-de-estoque-acme`).
 
 **Resposta (200):**
 
 ```json
 {
   "id": "uuid",
-  "slug": "sistema-de-estoque-acme-estq",
+  "slug": "estq_sistema-de-estoque-acme",
   "system_name": "Sistema de Estoque ACME",
   "system_description": "...",
   "owner_name": "Maria Silva",
@@ -469,7 +520,7 @@ Base URL padrão: `http://localhost:8000`
   "area": "operacoes",
   "stack_hint": "python-fastapi",
   "stack_resolved": "python-fastapi",
-  "root_path": "projects/sistema-de-estoque-acme-estq",
+  "root_path": "projects/estq_sistema-de-estoque-acme",
   "files": [
     "src/main.py",
     "docs/architecture.json",
@@ -584,6 +635,17 @@ Gerenciamento de agentes customizados via **banco de dados**. Agentes de sistema
 
 ### 5.1 Pipeline do grafo (workflow `new-feature`)
 
+O grafo LangGraph usa um **loop central**: todo agente termina e volta ao nó `orchestrator`, que decide o próximo passo via código Python (`route_next`). A ordem abaixo é a visão de alto nível — a sequência real é **condicional** (ver [§5.2](#52-como-o-orquestrador-escolhe-o-próximo-agente)).
+
+```mermaid
+flowchart LR
+    Orch[orchestrator_node] -->|"route_next"| Next[proximo agente]
+    Next --> Orch
+    Orch -->|FINISH| Finalize[finalize]
+```
+
+Visão simplificada do pipeline `new-feature`:
+
 ```mermaid
 flowchart LR
     REQ[requirements] --> ARCH[architect]
@@ -604,7 +666,155 @@ flowchart LR
 6. **documentation** — Docs finais (após review aprovado)
 7. **memory** — Indexa decisões no RAG
 
-### 5.2 Bundle de agentes (`AGENTS_BUNDLE_DIR`)
+### 5.2 Como o orquestrador escolhe o próximo agente
+
+O orquestrador **não é um agente LLM**. É um roteador determinístico implementado em Python — o comentário em `src/graph/routing.py` deixa isso explícito: *"Roteamento determinístico — LangGraph NÃO decide modelos"*.
+
+#### Ciclo de execução
+
+```mermaid
+flowchart LR
+    Start[Task iniciada] --> Orch[orchestrator_node]
+    Orch --> Route[route_next]
+    Route --> Agent[Agente LLM executa]
+    Agent --> Orch
+    Route -->|FINISH| Final[finalize_node]
+```
+
+1. O grafo entra em `orchestrator_node` (`src/graph/nodes/agents.py`).
+2. `route_next(state)` inspeciona o estado acumulado e retorna o nome do próximo nó (ou `"FINISH"`).
+3. O agente escolhido executa (chama LLM, valida saída, grava artefatos).
+4. O agente **sempre retorna** ao orquestrador — o ciclo se repete até `FINISH`.
+
+#### Flags do state usadas na decisão
+
+| Flag | Significado |
+|------|-------------|
+| `specification` | requirements já produziu a spec |
+| `architecture` | architect já definiu a arquitetura |
+| `task_plan` | planner já decompôs em tasks |
+| `artifacts` | specialists já geraram código |
+| `review_result` | reviewer já avaliou |
+| `memory_result` | memory já indexou no RAG |
+| `active_agents` | Time permitido nesta execução |
+| `workflow_config` | Regras do YAML (`new-feature`, `bugfix`, `refactor`) |
+| `specialists_pending` / `specialists_done` | Fila de specialists a executar |
+
+#### Ordem de prioridade do `route_next()`
+
+A função em `src/graph/routing.py` aplica regras **em ordem fixa**:
+
+1. **Parar** — se `force_stop` (monitoring detectou loop) ou `iteration_count >= MAX_ITERATIONS`
+2. **requirements** — se está nos `required_agents` do workflow e ainda não há `specification`
+3. **architect** — se `needs_architecture` e ainda não há `architecture`
+4. **planner** — se ainda não há `task_plan` (e há spec ou arch, ou workflow é `refactor`)
+5. **specialists** — via `get_specialists_for_plan()`:
+   - Lê `task_plan.tasks[].agent` produzido pelo planner
+   - Se o plano não especificar agents → usa todos os `specialists` do workflow YAML
+   - Filtra por `active_agents` (time configurado)
+   - **Mais de 1 pendente** → nó `specialists_parallel` (execução paralela)
+   - **Só 1 pendente** → chama o specialist diretamente
+6. **reviewer** — quando há artefatos ou todos os specialists terminaram:
+   - Se reprovou com `refactor_requests` → manda de volta o specialist indicado (ex.: `backend`)
+   - Issues com severidade `high` **bloqueiam** progresso até corrigir (até `max_revisions`)
+7. **documentation** — após review aprovado (se estiver no time)
+8. **memory** — indexa decisões no RAG
+9. **cost_optimizer** — opcional, após memory
+10. **FINISH** — encerra e grava manifest em `.dreamteam/manifest.json`
+
+Em todo passo, o roteador verifica `_agent_in_team()`: se o agente não está em `active_agents`, **nunca é chamado**, mesmo que o pipeline normalmente o exigiria.
+
+#### Quem monta o time (antes do grafo)
+
+O orquestrador **não escolhe o time** — ele só roteia dentro do time já definido em `active_agents`:
+
+| Origem | Como o time é montado |
+|--------|----------------------|
+| `POST /work-your-magic` | `TeamMatcher` (`src/dream_teams/matcher.py`) analisa keywords no prompt → workflow + specialists |
+| `POST /dream-teams` | Lista explícita de `agents` no body |
+
+**TeamMatcher — classificação de workflow:**
+
+| Keywords no prompt | Workflow |
+|--------------------|----------|
+| bug, erro, corrigir, fix, hotfix… | `bugfix` |
+| refatorar, refactor, legado, otimizar… | `refactor` |
+| Demais casos | `new-feature` |
+
+**TeamMatcher — filtro de specialists:** palavras como "API", "REST" → `backend`; "React", "UI" → `frontend`; "PostgreSQL" → `database`; etc. Se nenhuma keyword bater, inclui **todos** os specialists do workflow.
+
+#### Papel do planner
+
+O planner é um **agente LLM**, mas não decide o roteamento — apenas produz o `task_plan`. O roteador Python lê esse JSON depois:
+
+```json
+{
+  "tasks": [
+    {"id": "T1", "agent": "backend", "description": "Implementar CRUD de produtos", "priority": 1},
+    {"id": "T2", "agent": "database", "description": "Schema e migrations", "priority": 2}
+  ],
+  "milestones": [],
+  "notes": ""
+}
+```
+
+Isso define **quais specialists** entram na fila — não **quando** (timing continua sendo regra fixa do `route_next`).
+
+#### Diferenças por workflow
+
+| Workflow | Comportamento |
+|----------|---------------|
+| `new-feature` | Pipeline completo: requirements → architect → planner → specialists → reviewer → memory |
+| `bugfix` | Sem `architect` nos required; começa em requirements → planner |
+| `refactor` | Sem `requirements`; começa em architect → planner |
+
+Arquivos de configuração: `workflows/new-feature.yaml`, `workflows/bugfix.yaml`, `workflows/refactor.yaml`.
+
+#### Exemplo passo a passo (`new-feature`)
+
+```
+Estado inicial: specification=null, architecture=null, task_plan=null
+  → route_next → "requirements"
+
+Após requirements: specification preenchido
+  → route_next → "architect"
+
+Após architect: architecture preenchido
+  → route_next → "planner"
+
+Após planner: task_plan com backend + database
+  → route_next → "specialists_parallel"
+
+Após specialists: artifacts preenchido
+  → route_next → "reviewer"
+
+Review aprovado
+  → route_next → "documentation" (se no time)
+  → route_next → "memory"
+  → route_next → "FINISH"
+```
+
+#### Resumo
+
+| Pergunta | Resposta |
+|----------|----------|
+| Quem decide o próximo agente? | `route_next()` em Python — não é LLM |
+| Com base em quê? | Estado da task + workflow YAML + time ativo |
+| Quem define quais specialists existem? | Planner (`task_plan`) ou workflow/TeamMatcher |
+| Quem define o workflow? | TeamMatcher (automático) ou você (manual) |
+| Existe agente LLM "orchestrator"? | Não — o nó `orchestrator` é só roteador |
+
+#### Arquivos de referência
+
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `src/graph/routing.py` | Lógica de roteamento (`route_next`, `get_specialists_for_plan`) |
+| `src/graph/orchestrator.py` | Construção do grafo LangGraph |
+| `src/graph/nodes/agents.py` | `orchestrator_node`, specialists paralelos, finalize |
+| `src/dream_teams/matcher.py` | Montagem inicial do time (workflow + agents) |
+| `workflows/*.yaml` | `required_agents`, `specialists`, `max_revisions` |
+
+### 5.3 Bundle de agentes (`AGENTS_BUNDLE_DIR`)
 
 ```
 agents/
@@ -621,7 +831,7 @@ Para apontar bundle externo:
 AGENTS_BUNDLE_DIR=/caminho/para/bundle-externo
 ```
 
-### 5.3 Override de modelos
+### 5.4 Override de modelos
 
 Prioridade de resolução do modelo (maior → menor):
 
@@ -632,6 +842,8 @@ Prioridade de resolução do modelo (maior → menor):
 5. Default do sistema
 
 Providers configurados em `config/providers.yaml`: `openai`, `anthropic`, `google`, `ollama`, `vllm`.
+
+**Fallback de provider:** se o workflow ou agente pedir um provider sem API key configurada (ex.: `anthropic` sem `ANTHROPIC_API_KEY`), o `ModelRouter` faz fallback automático para o próximo provider disponível (prioridade: OpenAI → Anthropic → Google). Isso evita falhas como `api_key Input should be a valid string` quando só `OPENAI_API_KEY` está preenchida.
 
 ---
 
@@ -693,6 +905,11 @@ projects/{slug}/
 | `MAX_ITERATIONS` | 20 | Limite de iterações do grafo |
 | `MAX_AGENT_REVISITS` | 3 | Máximo de revisitas por agente |
 | `REQUEST_TIMEOUT_SECONDS` | 120 | Timeout de requisições LLM |
+| `DISPLAY_TIMEZONE` | `America/Sao_Paulo` | Fuso IANA para `estimated_completion_at` e timestamps na API |
+
+Horários como `estimated_completion_at` são retornados no fuso configurado (ex.: `2026-05-29T13:10:19-03:00`), não em UTC.
+
+**Tasks órfãs:** ao reiniciar o uvicorn, tasks com status `running` passam automaticamente para `interrupted`. Se uma task ficar `running` sem heartbeat Redis por muito tempo, o `GET /tasks/{id}` também a marca como `interrupted`.
 
 ---
 

@@ -25,7 +25,10 @@ async def lifespan(app: FastAPI):
     configure_logging()
     await init_db()
     await bootstrap_standards()
-    logger.info("dreamteam_started", version=get_settings().app_version)
+    from src.tasks.reconciliation import reconcile_orphaned_tasks
+
+    reconciled = await reconcile_orphaned_tasks()
+    logger.info("dreamteam_started", version=get_settings().app_version, reconciled_tasks=reconciled)
     yield
     logger.info("dreamteam_shutdown")
 

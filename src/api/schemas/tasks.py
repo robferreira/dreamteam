@@ -14,6 +14,14 @@ class WorkflowType(str, Enum):
     REFACTOR = "refactor"
 
 
+class TaskTimelineSchema(BaseModel):
+    estimated_duration_minutes: int
+    estimated_duration_label: str
+    estimated_completion_at: str
+    timeline_rationale: str
+    display_timezone: str = "America/Sao_Paulo"
+
+
 class ModelOverrideSchema(BaseModel):
     agent: str
     provider: str
@@ -58,12 +66,19 @@ class TaskResponse(BaseModel):
 
 class TaskStepSchema(BaseModel):
     agent: str
-    model_provider: str
-    model_name: str
-    model_source: str
-    tokens_estimated: int
-    latency_ms: int
+    status: Literal["completed", "running", "failed"] = "completed"
+    model_provider: str = ""
+    model_name: str = ""
+    model_source: str = ""
+    tokens_estimated: int = 0
+    latency_ms: int = 0
     created_at: str | None = None
+
+
+class TaskProgressSchema(BaseModel):
+    completed_count: int
+    current_agent: str | None = None
+    label: str = ""
 
 
 class TaskStatusResponse(BaseModel):
@@ -80,6 +95,9 @@ class TaskStatusResponse(BaseModel):
     thread_id: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
+    timeline: TaskTimelineSchema | None = None
+    current_agent: str | None = None
+    progress: TaskProgressSchema | None = None
     steps: list[TaskStepSchema] = []
 
 

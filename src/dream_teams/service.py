@@ -148,7 +148,7 @@ class DreamTeamService:
         descricao: str | None = None,
     ) -> dict[str, Any]:
         """Recebe demanda + dados essenciais; infere o restante e executa."""
-        from src.dream_teams.demand_parser import build_project_from_demand, project_slug_from_sigla
+        from src.dream_teams.demand_parser import build_project_from_demand
         from src.dream_teams.matcher import TeamMatcher
 
         project = build_project_from_demand(
@@ -158,15 +158,13 @@ class DreamTeamService:
             nome_projeto=nome_projeto,
             descricao=descricao,
         )
-        slug = project_slug_from_sigla(sigla)
         matcher = TeamMatcher()
         match = matcher.match(pedido, stack_hint=project.stack_hint)
 
-        existing = await self._repo.get_by_slug(slug)
-        if not existing:
-            project_row = await self._project_repo.get_by_slug(slug)
-            if project_row:
-                existing = await self._repo.get_by_project(project_row.id)
+        existing = None
+        project_row = await self._project_repo.get_by_sigla(sigla)
+        if project_row:
+            existing = await self._repo.get_by_project(project_row.id)
         if existing and existing.status == "ready":
             team_id = existing.id
             match_rationale = f"{match.rationale}. Projeto existente reutilizado."

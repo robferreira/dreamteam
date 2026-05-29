@@ -17,8 +17,15 @@ class PromptBuilder:
             lines.append(f"- Organização: {metadata['organization']}")
         if metadata.get("stack_hint"):
             lines.append(f"- Preferência de stack: {metadata['stack_hint']}")
-        if metadata.get("additional_context"):
-            lines.append(f"- Contexto adicional: {metadata['additional_context']}")
+        timeline = ctx.get("timeline")
+        if isinstance(timeline, dict) and timeline.get("estimated_duration_label"):
+            lines.append(
+                f"- Prazo estimado para conclusão: {timeline['estimated_duration_label']} "
+                f"(até {timeline.get('estimated_completion_at', '')})"
+            )
+        ctx_display = {k: v for k, v in ctx.items() if k != "timeline"}
+        if ctx_display:
+            lines.append(f"- Contexto adicional: {ctx_display}")
         return "\n".join(lines)
 
     @staticmethod

@@ -7,7 +7,11 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def client():
-    with patch("src.memory.postgres.init_db", new=AsyncMock()):
+    with (
+        patch("src.memory.postgres.init_db", new=AsyncMock()),
+        patch("src.memory.rag.bootstrap_standards", new=AsyncMock()),
+        patch("src.tasks.reconciliation.reconcile_orphaned_tasks", new=AsyncMock(return_value=0)),
+    ):
         from src.main import app
 
         with TestClient(app) as c:
@@ -29,6 +33,12 @@ def test_work_your_magic_minimal_body(client):
                 "agents": ["requirements", "backend"],
                 "rationale": "Nova feature com backend",
                 "status": "running",
+                "timeline": {
+                    "estimated_duration_minutes": 25,
+                    "estimated_duration_label": "20–30 minutos",
+                    "estimated_completion_at": "2026-05-29T15:00:00+00:00",
+                    "timeline_rationale": "Workflow new-feature, 2 agentes no time",
+                },
             }
         ),
     ):
@@ -42,6 +52,7 @@ def test_work_your_magic_minimal_body(client):
         )
     assert r.status_code == 200
     assert r.json()["status"] == "running"
+    assert r.json()["timeline"]["estimated_duration_minutes"] == 25
 
 
 def test_work_your_magic_requires_responsavel_and_sigla(client):

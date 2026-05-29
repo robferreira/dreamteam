@@ -22,6 +22,7 @@ def test_build_project_with_explicit_fields():
     assert project.owner_name == "Maria Silva"
     assert project.organization == "ESTQ"
     assert project.additional_context["sigla"] == "ESTQ"
+    assert project.additional_context["slug_base"] == "estq_sistema-de-estoque"
     assert project.additional_context.get("nome_projeto_inferred") is None
 
 
@@ -37,7 +38,8 @@ def test_build_project_infers_name_and_description():
     assert project.additional_context["nome_projeto_inferred"] is True
     assert project.additional_context["descricao_inferred"] is True
     assert project.stack_hint == "python-fastapi"
+    assert project.additional_context["slug_base"].startswith("estq_")
 
 
-def test_slug_from_sigla():
-    assert project_slug_from_sigla("ESTQ") == "estq"
+def test_slug_from_sigla_and_name():
+    assert project_slug_from_sigla("ESTQ", "Sistema de Estoque") == "estq_sistema-de-estoque"

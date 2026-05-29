@@ -48,4 +48,5 @@ async def run_dream_team(team_id: str, request: RunDreamTeamRequest):
         project_path=result["project_path"],
         status=result["status"],
         message=result.get("message", "Execução iniciada"),
+        timeline=result.get("timeline"),
     )

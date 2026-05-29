@@ -29,4 +29,5 @@ async def work_your_magic(request: WorkYourMagicRequest):
         agents=result["agents"] or [],
         rationale=result["rationale"],
         status=result["status"],
+        timeline=result.get("timeline"),
     )

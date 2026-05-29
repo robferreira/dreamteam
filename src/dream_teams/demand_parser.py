@@ -2,7 +2,7 @@ import re
 from typing import Any
 
 from src.api.schemas.project import ProjectMetadataSchema
-from src.projects.service import slugify
+from src.projects.service import project_folder_slug, slugify
 
 STACK_PATTERNS: list[tuple[str, list[str]]] = [
     ("python-fastapi", ["fastapi", "python", "uvicorn", "pydantic", "postgresql", "postgres"]),
@@ -51,8 +51,8 @@ def infer_description_from_pedido(pedido: str) -> str:
     return f"Demanda: {text}"
 
 
-def project_slug_from_sigla(sigla: str) -> str:
-    return slugify(sigla.lower())
+def project_slug_from_sigla(sigla: str, project_name: str = "project") -> str:
+    return project_folder_slug(sigla, project_name)
 
 
 def build_project_from_demand(
@@ -67,7 +67,7 @@ def build_project_from_demand(
     system_name = nome_projeto.strip() if nome_projeto else infer_project_name_from_pedido(pedido)
     system_description = descricao.strip() if descricao else infer_description_from_pedido(pedido)
     stack = infer_stack_hint(f"{pedido} {system_name} {system_description}")
-    slug_base = project_slug_from_sigla(sigla)
+    slug_base = project_folder_slug(sigla, system_name)
 
     extra: dict[str, Any] = {
         "source": "work_your_magic",

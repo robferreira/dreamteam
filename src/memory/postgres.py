@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.memory.db_models import (
@@ -74,6 +74,7 @@ class TaskRepository:
         thread_id: str | None = None,
         project_uuid: UUID | None = None,
         dream_team_uuid: UUID | None = None,
+        timeline: dict[str, Any] | None = None,
     ) -> Task:
         async with get_session() as session:
             task = Task(
@@ -84,6 +85,7 @@ class TaskRepository:
                 dream_team_uuid=dream_team_uuid,
                 user_id=user_id,
                 thread_id=thread_id,
+                timeline=timeline,
                 status="running",
             )
             session.add(task)
@@ -116,6 +118,8 @@ class TaskRepository:
         result: dict[str, Any] | None = None,
         error: str | None = None,
         thread_id: str | None = None,
+        current_agent: str | None = None,
+        clear_current_agent: bool = False,
     ) -> None:
         async with get_session() as session:
             result_q = await session.execute(select(Task).where(Task.id == task_id))
@@ -130,6 +134,39 @@ class TaskRepository:
                 task.error = error
             if thread_id is not None:
                 task.thread_id = thread_id
+            if clear_current_agent:
+                task.current_agent = None
+            elif current_agent is not None:
+                task.current_agent = current_agent
+
+    async def list_running_tasks(self) -> list[Task]:
+        async with get_session() as session:
+            result = await session.execute(select(Task).where(Task.status == "running"))
+            return list(result.scalars().all())
+
+    async def mark_interrupted(
+        self,
+        task_id: UUID,
+        error: str = "Execução interrompida: serviço reiniciado ou worker inativo",
+    ) -> None:
+        await self.update_task(
+            task_id,
+            status="interrupted",
+            error=error,
+            clear_current_agent=True,
+        )
+
+    async def reconcile_running_tasks(
+        self,
+        error: str = "Execução interrompida: serviço reiniciado ou worker inativo",
+    ) -> int:
+        async with get_session() as session:
+            result = await session.execute(
+                update(Task)
+                .where(Task.status == "running")
+                .values(status="interrupted", error=error, current_agent=None)
+            )
+            return result.rowcount or 0
 
     async def add_step(
         self,
@@ -214,6 +251,15 @@ class ProjectRepository:
         async with get_session() as session:
             result = await session.execute(select(Project).where(Project.slug == slug))
             return result.scalar_one_or_none()
+
+    async def get_by_sigla(self, sigla: str) -> Project | None:
+        async with get_session() as session:
+            result = await session.execute(
+                select(Project)
+                .where(Project.metadata_["sigla"].astext == sigla)
+                .order_by(Project.created_at.desc())
+            )
+            return result.scalars().first()
 
     async def get_by_id(self, project_id: UUID) -> Project | None:
         async with get_session() as session:
