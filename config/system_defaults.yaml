@@ -1,0 +1,8 @@
+default_model:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.2
+
+max_iterations: 20
+max_agent_revisits: 3
+max_revisions: 2

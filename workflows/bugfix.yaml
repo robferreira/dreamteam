@@ -1,0 +1,25 @@
+name: bugfix
+description: Correção de bug
+needs_architecture_default: false
+max_revisions: 2
+required_agents:
+  - requirements
+  - planner
+  - reviewer
+  - memory
+specialists:
+  - backend
+  - frontend
+models:
+  planner:
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.2
+  backend:
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.2
+  reviewer:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.0

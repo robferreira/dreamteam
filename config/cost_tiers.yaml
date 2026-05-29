@@ -1,0 +1,10 @@
+tiers:
+  economy:
+    max_temperature: 0.5
+    allowed_providers: [ollama, vllm, openai]
+  standard:
+    max_temperature: 1.0
+    allowed_providers: [openai, anthropic, google, ollama, vllm]
+  premium:
+    max_temperature: 1.0
+    allowed_providers: [openai, anthropic, google]

@@ -1,0 +1,42 @@
+name: new-feature
+description: Nova funcionalidade completa
+needs_architecture_default: true
+max_revisions: 2
+required_agents:
+  - requirements
+  - architect
+  - planner
+  - reviewer
+  - memory
+specialists:
+  - backend
+  - frontend
+  - database
+  - devops
+  - security
+  - documentation
+models:
+  planner:
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.2
+  architect:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.1
+  backend:
+    provider: anthropic
+    model: claude-3-5-sonnet-20241022
+    temperature: 0.2
+  frontend:
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.2
+  security:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.0
+  reviewer:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.0
