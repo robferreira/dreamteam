@@ -2,6 +2,14 @@
 
 Plataforma multi-agentes em Python com seleção de modelo em runtime, LangGraph, agentes Markdown e PostgreSQL + pgvector.
 
+## Visão geral
+
+DreamTeam é uma plataforma que recebe uma demanda em linguagem natural (ex.: “crie um frontend React para essa API”) e executa um time de agentes de IA — requirements, arquiteto, planner, frontend, backend, QA, reviewer etc.
+
+Cada agente roda em sequência (via LangGraph), gera código e documentação, grava tudo em `projects/{slug}/`, instala dependências, roda testes E2E e tenta se recuperar automaticamente quando algo falha.
+
+Em resumo: você descreve o que quer; o sistema monta o squad, implementa o projeto e acompanha o progresso pela API.
+
 ## Stack
 
 - Python 3.11+, FastAPI, LangGraph, Pydantic
